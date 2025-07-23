@@ -12,7 +12,7 @@ async function main() {
         await agregarTarea();
         break;
       case '2':
-        listarTareas();
+        await listarTareasFiltradas();
         break;
       case '3':
         await editarTarea();
