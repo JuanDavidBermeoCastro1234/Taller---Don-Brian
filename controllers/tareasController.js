@@ -1,47 +1,34 @@
-const fs = require('fs/promises');
-const inquirer = require('inquirer');
-const path = require('path');
+// controllers/tareasController.js
+import inquirer from 'inquirer';
+import _ from 'lodash';
+import { leerTareas, guardarTareas } from '../utils/archivo.js'; // ✅ Importación correcta
 
-const RUTA = path.join(__dirname, '../data/tareas.json'); // asegúrate de que existe este archivo
-
-// Leer tareas desde el archivo JSON
-async function leerTareas() {
-  try {
-    const data = await fs.readFile(RUTA, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    return []; // si el archivo está vacío o no existe
-  }
-}
-
-// Guardar tareas en el archivo JSON
-async function guardarTareas(tareas) {
-  await fs.writeFile(RUTA, JSON.stringify(tareas, null, 2));
-}
-
-// Agregar tarea
-async function agregarTarea() {
+export async function agregarTarea() {
   const { descripcion } = await inquirer.prompt([
-    { type: 'input', name: 'descripcion', message: 'Descripción de la tarea:' }
+    {
+      type: 'input',
+      name: 'descripcion',
+      message: 'Descripción de la tarea:',
+      validate: (input) => !_.isEmpty(input.trim()) || '⚠️ La descripción no puede estar vacía.'
+    }
   ]);
 
   const tareas = await leerTareas();
 
   const nueva = {
-    id: Date.now(),
+    id: Date.now(), // También podrías usar _.uniqueId('tarea_') o nanoid
     descripcion: descripcion.trim(),
     completada: false
   };
 
   tareas.push(nueva);
-  await guardarTareas(tareas);
+  await guardarTareas(_.uniqBy(tareas, 'descripcion')); // Evita duplicados por descripción
   console.log('✅ Tarea agregada.');
 }
 
-// Listar tareas
-async function listarTareasFiltradas() {
+export async function listarTareasFiltradas() {
   const tareas = await leerTareas();
-  if (tareas.length === 0) return console.log('📭 No hay tareas registradas.');
+  if (_.isEmpty(tareas)) return console.log('📭 No hay tareas registradas.');
 
   const { filtro } = await inquirer.prompt([
     {
@@ -56,15 +43,14 @@ async function listarTareasFiltradas() {
     }
   ]);
 
-  const filtradas = tareas.filter(t =>
-    filtro === 'todas' ? true :
-    filtro === 'completadas' ? t.completada :
-    !t.completada
+  const filtradas = _.orderBy(
+    tareas.filter(t =>
+      filtro === 'todas' ? true :
+      filtro === 'completadas' ? t.completada :
+      !t.completada
+    ),
+    ['descripcion'], ['asc']
   );
-
-  if (filtradas.length === 0) {
-    return console.log(`⚠️ No hay tareas ${filtro}.`);
-  }
 
   console.log(`\n📋 Tareas (${filtro}):`);
   filtradas.forEach((t, i) => {
@@ -73,11 +59,9 @@ async function listarTareasFiltradas() {
   });
 }
 
-
-// Editar tarea
-async function editarTarea() {
+export async function editarTarea() {
   const tareas = await leerTareas();
-  if (tareas.length === 0) return console.log('⚠️ No hay tareas para editar.');
+  if (_.isEmpty(tareas)) return console.log('⚠️ No hay tareas para marcar.');
 
   const { indice } = await inquirer.prompt([
     {
@@ -96,10 +80,9 @@ async function editarTarea() {
   console.log('✅ Tarea marcada como completada.');
 }
 
-// Eliminar tarea
-async function eliminarTarea() {
+export async function eliminarTarea() {
   const tareas = await leerTareas();
-  if (tareas.length === 0) return console.log('⚠️ No hay tareas para eliminar.');
+  if (_.isEmpty(tareas)) return console.log('⚠️ No hay tareas para eliminar.');
 
   const { indice } = await inquirer.prompt([
     {
@@ -113,17 +96,20 @@ async function eliminarTarea() {
     }
   ]);
 
-  tareas.splice(indice, 1);
-  await guardarTareas(tareas);
-  console.log('🗑️ Tarea eliminada.');
+  const { confirmar } = await inquirer.prompt([
+    {
+      type: 'confirm',
+      name: 'confirmar',
+      message: `¿Estás seguro de eliminar la tarea "${tareas[indice].descripcion}"?`,
+      default: false
+    }
+  ]);
+
+  if (confirmar) {
+    tareas.splice(indice, 1);
+    await guardarTareas(tareas);
+    console.log('🗑️ Tarea eliminada.');
+  } else {
+    console.log('🚫 Eliminación cancelada.');
+  }
 }
-
-// Exportar todo
-module.exports = {
-  agregarTarea,
-  listarTareasFiltradas,
-  editarTarea,
-  eliminarTarea
-};
-
-

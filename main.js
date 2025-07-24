@@ -1,31 +1,61 @@
-import mostrarMenu from './helpers/menu.js';
-import { listarTareas, agregarTarea, editarTarea, eliminarTarea } from './controllers/tareasController.js';
+import inquirer from 'inquirer';
+import { agregarTarea, listarTareasFiltradas, editarTarea, eliminarTarea } from './controllers/tareascontroller.js';
 
-async function main() {
+async function mostrarMenu() {
+  const { opcion } = await inquirer.prompt([
+    {
+      type: 'list',
+      name: 'opcion',
+      message: 'Selecciona una opción:',
+      choices: [
+        { name: '1. Agregar tarea', value: 'agregar' },
+        { name: '2. Listar tareas', value: 'listar' },
+        { name: '3. Editar tarea (marcar completada)', value: 'editar' },
+        { name: '4. Eliminar tarea', value: 'eliminar' },
+        { name: '5. Salir', value: 'salir' }
+      ]
+    }
+  ]);
+
+  return opcion;
+}
+
+async function ejecutar() {
   let salir = false;
 
   while (!salir) {
     const opcion = await mostrarMenu();
 
     switch (opcion) {
-      case '1':
+      case 'agregar':
         await agregarTarea();
         break;
-      case '2':
+      case 'listar':
         await listarTareasFiltradas();
         break;
-      case '3':
+      case 'editar':
         await editarTarea();
         break;
-      case '4':
+      case 'eliminar':
         await eliminarTarea();
         break;
-      case '5':
+      case 'salir':
+        console.log('👋 Saliendo del gestor de tareas...');
         salir = true;
-        console.log('👋 ¡Hasta pronto!');
         break;
+    }
+
+    if (!salir) {
+      await inquirer.prompt([
+        {
+          type: 'input',
+          name: 'continuar',
+          message: '\nPresiona ENTER para continuar...'
+        }
+      ]);
+      console.clear();
     }
   }
 }
 
-main();
+ejecutar();
